@@ -288,6 +288,9 @@ else:
     trajlen = len(u.trajectory)
     logger.debug("> loaded trajectory with %s steps"%trajlen)
 
+# check smoothing window is not too large
+if frames > trajlen/3.0 and avg_method != "none":
+        leave("ERROR: number of frames used for smoothing (%s) too large for trajectory length (%s)!"%(frames, trajlen))
 
 #checking time boundary conditions
 if stop >= trajlen:
@@ -378,16 +381,6 @@ except:
 
 print_dinosaur() # rawrrr
 
-
-### TODO ###
-# test whether memory requirements are satisfied
-# let M = len(all_select), N = len(tsteps) and F = np.unique(lengths)[0]
-# - M times NxN floating point arrays [pairwise CCC surfaces]
-# - M times TxN floating point arrays [dens vs time surfaces]
-# -some additional shrapnel here and there
-### TODO ###
-
-
 ### GET RMSD INFORMATION ###
 #
 #if os.path.isfile("bkp_RMSD_all_traces.dat"):
@@ -468,10 +461,16 @@ if len(b) != 1:
 axes = np.arange(b[0])
 
 #time series for z-box evolution as well as its running average
+# (over 100 frames, unless simulation has very little frames)
 thistime = tsteps*timestep/1000.0
+
 N = len(box_dims[:, 2])/100
 if N%2 != 0:
     N-=1
+if N<2 and len(box_dims)>20:
+    N = 10
+else:
+    N = 2
 
 running_avg = np.convolve(box_dims[start:stop, 3], np.repeat(1.0, N)/N, mode='valid')
 thistime2 = (np.arange(len(running_avg))+N/2)*timestep/1000.0
@@ -503,14 +502,14 @@ ax.set_ylabel("z box ($\AA$)")
 ax.set_xlim([0, np.max(thistime)])
 logger.debug(">>> boundaries: %s, %s"%(np.min(box_dims[:, 3]), np.max(box_dims[:, 3])))
 
-plt.savefig("fig_z_box.png")
+fig.savefig("fig_z_box.png")
 
 
 #2. compare CCC traces of each residue
 logger.debug(">> aggregated CCC evolution per residue...")
 fig = plt.figure(dpi=120, figsize=(8, 8))
 ax = fig.add_subplot(1, 1, 1)
-c=cm.get_cmap("viridis")
+c = cm.get_cmap("viridis")
 mycycle = [c(i) for i in np.linspace(0.0, 1.0, len(all_labels))]
 plt.gca().set_prop_cycle("color", mycycle)
 
@@ -528,7 +527,7 @@ else:
     cols = 1
 
 ax.legend(loc="lower right", ncol=cols, frameon=False)
-plt.savefig("fig_CCC_all_traces_%s_%s.png"%(bins, frames))
+fig.savefig("fig_CCC_all_traces_%s_%s.png"%(bins, frames))
 
 
 # iterate over each residue selection, for individual plots
@@ -543,8 +542,8 @@ for i in range(len(all_labels)):
 
         #3. density vs time surface and cross-correlation
         fig = plt.figure(dpi=120, figsize=(8, 8))
-        plt.title(label)
         ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(label)
         X, Y = np.meshgrid(axes, sampling_time)
         c = cm.get_cmap("viridis")
         ax.pcolormesh(X, Y, dens, cmap=c)
@@ -581,14 +580,15 @@ for i in range(len(all_labels)):
         #ax3.set_xlabel("RMSD ($\AA$)", color='firebrick')
         #
         #plt.subplots_adjust(wspace=0)
-        plt.savefig("fig_density_%s_%s_%s.png"%(label, bins, frames))
+        fig.savefig("fig_density_%s_%s_%s.png"%(label, bins, frames))
+
         #4. pairwise cross-correlation
         Zm = ma.masked_where(conv_all==-1, conv_all)
         fig = plt.figure(dpi=120, figsize=(8, 8))
-        plt.title(label)
+        ax.set_title(label)
         ax = fig.add_subplot(1, 1, 1)
         X, Y = np.meshgrid(sampling_time, sampling_time)
-        c=cm.get_cmap("viridis")
+        c = cm.get_cmap("viridis")
         minccc = max(0.9, np.min(Zm))
         plt.pcolormesh(X, Y, Zm, cmap=c, vmax=1, vmin=minccc)
         plt.xlabel("time (ns)")
