@@ -400,8 +400,8 @@ print_dinosaur() # rawrrr
 ### GET DENSITY INFORMATION ###
 
 all_dens = [] #densities time evolutions
-all_ccc = [] # pairwise CCCs
-all_ccc_traces = [] #CCC traces
+all_ccc = [] # pairwise density correlations
+all_ccc_traces = [] #correlation coefficient traces
 testbins = []
 for k, sel in enumerate(all_select):
 
@@ -443,7 +443,7 @@ for k, sel in enumerate(all_select):
                 v1 = np.corrcoef(pred, curr)[0, 1]
                 conv_pairwise[i, j] = v1
 
-    #get cross-correlation of consecutive frames and ignore diagonal elements of pairwise CCC
+    #get correlation of consecutive frames and ignore diagonal elements of pairwise density correlation
     conv = np.diagonal(conv_pairwise, offset=1).copy()
     np.fill_diagonal(conv_pairwise, -1)
 
@@ -482,7 +482,7 @@ sampling_time = time*timestep/1000.0
 header="time\t"
 header+= "\t".join(all_labels)
 all_traces = np.hstack((sampling_time[:-1][:, np.newaxis], np.array(all_ccc_traces).T)) 
-np.savetxt("bkp_CCC_all_traces_%s_%s.dat"%(bins, frames), all_traces, header=header, fmt="%10.6f", delimiter="\t")
+np.savetxt("bkp_correlation_all_traces_%s_%s.dat"%(bins, frames), all_traces, header=header, fmt="%10.6f", delimiter="\t")
 
 
 ### PLOT DATA ###
@@ -505,8 +505,8 @@ logger.debug(">>> boundaries: %s, %s"%(np.min(box_dims[:, 3]), np.max(box_dims[:
 fig.savefig("fig_z_box.png")
 
 
-#2. compare CCC traces of each residue
-logger.debug(">> aggregated CCC evolution per residue...")
+#2. compare correlation traces of each residue
+logger.debug(">> aggregated correlation evolution per residue...")
 fig = plt.figure(dpi=120, figsize=(8, 8))
 ax = fig.add_subplot(1, 1, 1)
 c = cm.get_cmap("viridis")
@@ -517,7 +517,7 @@ for i in range(len(all_labels)):
         ax.plot(sampling_time[:-1], all_ccc_traces[i], "-", label="%s"%all_labels[i])
 
 ax.set_xlabel("time (ns)")
-ax.set_ylabel("CCC")
+ax.set_ylabel("correlation coefficient")
 ax.set_xlim([0, np.max(sampling_time)])
 
 # > decide whether a multi-column legend is needed
@@ -527,7 +527,7 @@ else:
     cols = 1
 
 ax.legend(loc="lower right", ncol=cols, frameon=False)
-fig.savefig("fig_CCC_all_traces_%s_%s.png"%(bins, frames))
+fig.savefig("fig_correlation_all_traces_%s_%s.png"%(bins, frames))
 
 
 # iterate over each residue selection, for individual plots
@@ -552,8 +552,8 @@ for i in range(len(all_labels)):
         ax.set_xlim([np.min(axes), np.max(axes)])
         ax.set_ylim([np.min(sampling_time), np.max(sampling_time)])
 
-        # commented below: old routine comparing stepwise CCC with RMSD convergence
-        ## plot pairwise CCC
+        # commented below: old routine comparing stepwise PDC with RMSD convergence
+        ## plot pairwise density correlation
         #N = int(len(conv_trace)/100)
         #if N%2 != 0:
         #    N-=1
@@ -595,7 +595,7 @@ for i in range(len(all_labels)):
         plt.ylabel("time (ns)")
         plt.colorbar()
 
-        plt.savefig("fig_CCC_pairwise_%s_%s_%s.png"%(label, bins, frames))
+        plt.savefig("fig_PDC_%s_%s_%s.png"%(label, bins, frames))
 
 if display=="yes" or display==True:
     plt.show()
